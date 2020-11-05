@@ -282,6 +282,9 @@ void cmMakefileLibraryTargetGenerator::WriteNvidiaDeviceLibraryRules(
   std::vector<std::string> depends;
   this->AppendLinkDepends(depends, linkLanguage);
 
+  std::vector<std::string> dependsForJson;
+  this->AppendLinkDependsForJson(dependsForJson, linkLanguage);
+
   // Add language-specific flags.
   std::string langFlags;
   this->LocalGenerator->AddLanguageFlagsForLinking(
@@ -395,6 +398,10 @@ void cmMakefileLibraryTargetGenerator::WriteNvidiaDeviceLibraryRules(
   }
 
   std::vector<std::string> commands1;
+
+  this->CreateLinkCommandFile(real_link_commands, dependsForJson,
+                              std::set<int>());
+
   // Optionally convert the build rule to use a script to avoid long
   // command lines in the make shell.
   if (useLinkScript) {
@@ -444,8 +451,13 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules(
   // Build list of dependencies.
   std::vector<std::string> depends;
   this->AppendLinkDepends(depends, linkLanguage);
+
+  std::vector<std::string> dependsForJson;
+  this->AppendLinkDependsForJson(dependsForJson, linkLanguage);
+
   if (!this->DeviceLinkObject.empty()) {
     depends.push_back(this->DeviceLinkObject);
+    dependsForJson.push_back(this->DeviceLinkObject);
   }
 
   // Create set of linking flags.
@@ -689,6 +701,8 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules(
     }
   }
 
+  // To skip unused in ranlib commands when creating json
+  std::set<int> ranlibIndex;
   // Expand the rule variables.
   std::vector<std::string> real_link_commands;
   {
@@ -701,7 +715,6 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules(
     // Collect up flags to link in needed libraries.
     std::string linkLibs;
     if (this->GeneratorTarget->GetType() != cmStateEnums::STATIC_LIBRARY) {
-
       std::unique_ptr<cmLinkLineComputer> linkLineComputer =
         this->CreateLinkLineComputer(
           this->LocalGenerator,
@@ -875,6 +888,7 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules(
         // If there is no ranlib the command will be ":".  Skip it.
         if (!cmd.empty() && cmd[0] != ':') {
           real_link_commands.push_back(std::move(cmd));
+          ranlibIndex.insert(real_link_commands.size() - 1);
         }
       }
     } else {
@@ -901,6 +915,9 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules(
     // Restore path conversion to normal shells.
     this->LocalGenerator->SetLinkScriptShell(false);
   }
+
+  this->CreateLinkScriptJSON(real_link_commands, dependsForJson,
+                             ranlibIndex);
 
   // Optionally convert the build rule to use a script to avoid long
   // command lines in the make shell.

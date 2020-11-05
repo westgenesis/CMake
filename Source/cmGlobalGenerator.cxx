@@ -3252,6 +3252,9 @@ std::string cmGlobalGenerator::EscapeJSON(const std::string& s)
         result += i;
     }
   }
+  if (result.back() == ' ') {
+    return result.substr(0, result.size() - 1);
+  }
   return result;
 }
 

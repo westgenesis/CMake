@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "../Utilities/cmjsoncpp/include/json/json.h"
 #include "cmGeneratorTarget.h"
 #include "cmGlobalCommonGenerator.h"
 #include "cmGlobalGeneratorFactory.h"
@@ -174,6 +175,10 @@ public:
                             const std::string& workingDirectory,
                             const std::string& compileCommand);
 
+  void AddLinkCommand(const std::vector<std::string>& sourceFiles,
+                      const std::string& workingDirectory,
+                      const std::string& linkCommand);
+
   /** Does the make tool tolerate .NOTPARALLEL? */
   virtual bool AllowNotParallel() const { return true; }
 
@@ -275,6 +280,8 @@ protected:
   size_t CountProgressMarksInAll(const cmLocalGenerator& lg);
 
   std::unique_ptr<cmGeneratedFileStream> CommandDatabase;
+  std::unique_ptr<cmGeneratedFileStream> LinkCommandDatabase;
+  Json::Value linkJsonCommands;
 
 private:
   const char* GetBuildIgnoreErrorsFlag() const override { return "-i"; }

@@ -184,6 +184,16 @@ void cmMakefileTargetGenerator::CreateRuleFile()
   this->LocalGenerator->WriteSpecialTargetsTop(*this->BuildFileStream);
 }
 
+void cmMakefileTargetGenerator::CreateLinkCommandFile(std::vector<std::string> const& link_commands,
+                           const std::vector<std::string>& makefile_depends,
+                           const std::set<int>& ranlibIndexes)
+{
+  if (this->Makefile->IsOn("CMAKE_EXPORT_LINK_COMMANDS")) {
+    cmMakefileTargetGenerator::CreateLinkScriptJSON(link_commands, makefile_depends, ranlibIndexes);
+  }
+
+}
+
 void cmMakefileTargetGenerator::WriteTargetBuildRules()
 {
   // -- Write the custom commands for this target
@@ -1914,11 +1924,47 @@ void cmMakefileTargetGenerator::AppendObjectDepends(
                                          this->BuildFileNameFull.c_str());
 }
 
+void cmMakefileTargetGenerator::AppendLinkDependsForJson(
+  std::vector<std::string>& depends, const std::string& linkLanguage)
+{
+
+  // Add dependencies on the compiled object files.
+  std::string const& buildDirFullPath = this->LocalGenerator->ConvertToFullPath("");
+  for (std::string const& obj : this->Objects) {
+    std::string objTarget = cmStrCat(buildDirFullPath, obj);
+    depends.emplace_back(std::move(objTarget));
+  }
+
+  // Add dependencies on the external object files.
+  cm::append(depends, this->ExternalObjects);
+
+  // Add dependencies on targets that must be built first.
+  this->AppendTargetDepends(depends);
+
+  // Add a dependency on the link definitions file, if any.
+  if (cmGeneratorTarget::ModuleDefinitionInfo const* mdi =
+        this->GeneratorTarget->GetModuleDefinitionInfo(
+          this->GetConfigName())) {
+    for (cmSourceFile const* src : mdi->Sources) {
+      depends.emplace_back(src->GetFullPath());
+    }
+  }
+  // Add a dependency on user-specified manifest files, if any.
+  std::vector<cmSourceFile const*> manifest_srcs;
+  this->GeneratorTarget->GetManifests(manifest_srcs, this->GetConfigName());
+  for (cmSourceFile const* manifest_src : manifest_srcs) {
+    depends.emplace_back(manifest_src->GetFullPath());
+  }
+
+  // Add user-specified dependencies.
+  this->GeneratorTarget->GetLinkDepends(depends, this->GetConfigName(),
+                                        linkLanguage);
+}
+
 void cmMakefileTargetGenerator::AppendLinkDepends(
   std::vector<std::string>& depends, const std::string& linkLanguage)
 {
   this->AppendObjectDepends(depends);
-
   // Add dependencies on targets that must be built first.
   this->AppendTargetDepends(depends);
 
@@ -1966,6 +2012,25 @@ void cmMakefileTargetGenerator::CloseFileStreams()
   this->FlagFileStream.reset();
 }
 
+void cmMakefileTargetGenerator::CreateLinkScriptJSON(
+  std::vector<std::string> const& link_commands,
+  const std::vector<std::string>& makefile_depends,
+  const std::set<int>& ranlibIndexes)
+{
+  std::string workingDirectory = cmSystemTools::CollapseFullPath(
+    this->LocalGenerator->GetCurrentBinaryDirectory());
+
+  for (size_t i = 0; i < link_commands.size(); i++) {
+    if (ranlibIndexes.find(i) != ranlibIndexes.end()) { // for runlib command
+      this->GlobalGenerator->AddLinkCommand(
+        std::vector<std::string>(), workingDirectory, link_commands[i]);
+    } else {
+      this->GlobalGenerator->AddLinkCommand(makefile_depends, workingDirectory,
+                                            link_commands[i]);
+    }
+  }
+}
+
 void cmMakefileTargetGenerator::CreateLinkScript(
   const char* name, std::vector<std::string> const& link_commands,
   std::vector<std::string>& makefile_commands,
@@ -1974,6 +2039,7 @@ void cmMakefileTargetGenerator::CreateLinkScript(
   // Create the link script file.
   std::string linkScriptName =
     cmStrCat(this->TargetBuildDirectoryFull, '/', name);
+
   cmGeneratedFileStream linkScriptStream(linkScriptName);
   linkScriptStream.SetCopyIfDifferent(true);
   for (std::string const& link_command : link_commands) {

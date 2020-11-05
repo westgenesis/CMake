@@ -136,7 +136,13 @@ void cmMakefileExecutableTargetGenerator::WriteNvidiaDeviceExecutableRule(
 
   // Build list of dependencies.
   std::vector<std::string> depends;
+
+  // Build list of dependencies without .make files, which will be use to get
+  // json's links command
+  std::vector<std::string> dependsForJson;
+
   this->AppendLinkDepends(depends, linkLanguage);
+  this->AppendLinkDependsForJson(dependsForJson, linkLanguage);
 
   // Build a list of compiler flags and linker flags.
   std::string langFlags;
@@ -254,6 +260,9 @@ void cmMakefileExecutableTargetGenerator::WriteNvidiaDeviceExecutableRule(
     this->LocalGenerator->SetLinkScriptShell(false);
   }
 
+  this->CreateLinkCommandFile(real_link_commands, dependsForJson,
+                              std::set<int>());
+
   // Optionally convert the build rule to use a script to avoid long
   // command lines in the make shell.
   if (useLinkScript) {
@@ -357,9 +366,15 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
 
   // Build list of dependencies.
   std::vector<std::string> depends;
+  // Build other list of dependencies, which will use to get json's links
+  // command
+  std::vector<std::string> dependsForJson;
+
   this->AppendLinkDepends(depends, linkLanguage);
+  this->AppendLinkDependsForJson(dependsForJson, linkLanguage);
   if (!this->DeviceLinkObject.empty()) {
     depends.push_back(this->DeviceLinkObject);
+    dependsForJson.push_back(this->DeviceLinkObject);
   }
 
   this->NumberOfProgressActions++;
@@ -616,6 +631,9 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
     this->LocalGenerator->SetLinkScriptShell(false);
   }
 
+  this->CreateLinkCommandFile(real_link_commands, dependsForJson,
+                              std::set<int>());
+
   // Optionally convert the build rule to use a script to avoid long
   // command lines in the make shell.
   if (useLinkScript) {
@@ -662,8 +680,10 @@ void cmMakefileExecutableTargetGenerator::WriteExecutableRule(bool relink)
   // symlink.
   if (targetFullPath != targetFullPathReal) {
     depends.clear();
+    dependsForJson.clear();
     commands.clear();
     depends.push_back(targetFullPathReal);
+    dependsForJson.push_back(targetFullPathReal);
     this->LocalGenerator->WriteMakeRule(*this->BuildFileStream, nullptr,
                                         targetFullPath, depends, commands,
                                         false);

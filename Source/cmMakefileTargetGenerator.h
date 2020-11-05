@@ -66,6 +66,11 @@ protected:
   // create the file and directory etc
   void CreateRuleFile();
 
+  // create JSon file if this option is enable;
+  void CreateLinkCommandFile(std::vector<std::string> const& link_commands,
+                             const std::vector<std::string>& makefile_depends,
+                             const std::set<int>& ranlibIndexes);
+
   // outputs the rules for object files and custom commands used by
   // this target
   void WriteTargetBuildRules();
@@ -137,12 +142,19 @@ protected:
   // Append object file dependencies.
   void AppendObjectDepends(std::vector<std::string>& depends);
 
+  void AppendLinkDependsForJson(std::vector<std::string>& depends,
+                                const std::string& linkLanguage);
+
   // Append link rule dependencies (objects, etc.).
   void AppendLinkDepends(std::vector<std::string>& depends,
                          const std::string& linkLanguage);
 
   // Lookup the link rule for this target.
   std::string GetLinkRule(const std::string& linkRuleVar);
+
+  void CreateLinkScriptJSON(std::vector<std::string> const& link_commands,
+                            const std::vector<std::string>& makefile_depends,
+                            const std::set<int>& ranlibIndexes);
 
   /** Create a script to hold link rules and a command to invoke the
       script at build time.  */

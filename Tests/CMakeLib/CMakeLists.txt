@@ -73,6 +73,11 @@ if(TEST_CompileCommandOutput)
   target_link_libraries(runcompilecommands CMakeLib)
 endif()
 
+if(TEST_LinkCommandOutput)
+  add_executable(runlinkcommands run_link_commands.cpp)
+  target_link_libraries(runlinkcommands CMakeLib)
+endif()
+
 add_subdirectory(PseudoMemcheck)
 
 add_executable(testAffinity testAffinity.cxx)

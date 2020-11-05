@@ -10,7 +10,6 @@
 #include <cm/memory>
 #include <cmext/algorithm>
 #include <cmext/memory>
-
 #include "cmDocumentationEntry.h"
 #include "cmGeneratedFileStream.h"
 #include "cmGeneratorTarget.h"
@@ -170,6 +169,34 @@ void cmGlobalUnixMakefileGenerator3::Generate()
     *this->CommandDatabase << "\n]";
     this->CommandDatabase.reset();
   }
+
+  if (this->LinkCommandDatabase) {
+    *this->LinkCommandDatabase << linkJsonCommands;
+    this->LinkCommandDatabase.reset();
+  }
+}
+
+void cmGlobalUnixMakefileGenerator3::AddLinkCommand(
+  const std::vector<std::string>& sourceFiles,
+  const std::string& workingDirectory, const std::string& linkCommand)
+{
+  if (!this->LinkCommandDatabase) {
+    std::string commandDatabaseName =
+      this->GetCMakeInstance()->GetHomeOutputDirectory() +
+      "/link_commands.json";
+    this->LinkCommandDatabase =
+      cm::make_unique<cmGeneratedFileStream>(commandDatabaseName);
+  }
+  Json::Value linkJsonCommand;
+  linkJsonCommand["directory"] = cmGlobalGenerator::EscapeJSON(workingDirectory);
+  linkJsonCommand["command"] = cmGlobalGenerator::EscapeJSON(linkCommand);
+
+  Json::Value files(Json::arrayValue);
+  for(const auto & sourceFile : sourceFiles){
+    files.append(Json::Value(sourceFile));
+  }
+  linkJsonCommand["files"] = files;
+  linkJsonCommands.append(linkJsonCommand);
 }
 
 void cmGlobalUnixMakefileGenerator3::AddCXXCompileCommand(
