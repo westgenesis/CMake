@@ -916,8 +916,7 @@ void cmMakefileLibraryTargetGenerator::WriteLibraryRules(
     this->LocalGenerator->SetLinkScriptShell(false);
   }
 
-  this->CreateLinkScriptJSON(real_link_commands, dependsForJson,
-                             ranlibIndex);
+  this->CreateLinkCommandFile(real_link_commands, dependsForJson, ranlibIndex);
 
   // Optionally convert the build rule to use a script to avoid long
   // command lines in the make shell.
