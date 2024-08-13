@@ -176,6 +176,26 @@ void cmGlobalUnixMakefileGenerator3::Generate()
   }
 }
 
+std::string setLinkCommands(const std::string& linkCommand) 
+{
+  std::set<std::string> uniqueWords;
+  std::istringstream stream(linkCommand);
+  std::string word;
+  std::string result;
+
+  while (stream >> word) {
+      if (uniqueWords.find(word) == uniqueWords.end()) {
+          uniqueWords.insert(word);
+          if (!result.empty()) {
+              result += " ";
+          }
+          result += word;
+      }
+  }
+
+  return result;
+}
+
 void cmGlobalUnixMakefileGenerator3::AddLinkCommand(
   const std::vector<std::string>& sourceFiles,
   const std::string& workingDirectory, const std::string& linkCommand)
@@ -189,10 +209,11 @@ void cmGlobalUnixMakefileGenerator3::AddLinkCommand(
   }
   Json::Value linkJsonCommand;
   linkJsonCommand["directory"] = cmGlobalGenerator::EscapeJSON(workingDirectory);
-  linkJsonCommand["command"] = cmGlobalGenerator::EscapeJSON(linkCommand);
+  linkJsonCommand["command"] = cmGlobalGenerator::EscapeJSON(setLinkCommands(linkCommand));
 
   Json::Value files(Json::arrayValue);
-  for(const auto & sourceFile : sourceFiles){
+  std::set<std::string> setSourceFiles(sourceFiles.begin(), sourceFiles.end());
+  for(const auto & sourceFile : setSourceFiles){
     files.append(Json::Value(sourceFile));
   }
   linkJsonCommand["files"] = files;
